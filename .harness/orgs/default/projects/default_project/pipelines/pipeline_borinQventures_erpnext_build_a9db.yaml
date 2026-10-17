@@ -1,0 +1,70 @@
+pipeline:
+  id: pipeline_borinQventures_erpnext_build_a9db
+  name: pipeline_borinQventures_erpnext_build_a9db
+  stages:
+    - id: lint_and_build
+      name: Lint and Build
+      runtime: cloud
+      platform:
+        os: linux
+        arch: amd64
+      clone:
+        enabled: true
+      cache:
+        enabled: true
+      steps:
+        - id: setup_python
+          name: Setup Python
+          run:
+            shell: bash
+            script: |-
+              # Install Python 3.14 using pyenv
+              curl https://pyenv.run | bash
+              export PATH="$HOME/.pyenv/bin:$PATH"
+              eval "$(pyenv init -)"
+              pyenv install 3.14.0
+              pyenv global 3.14.0
+              python --version
+              pip --version
+        - id: setup_node
+          name: Setup Node
+          run:
+            shell: bash
+            script: |-
+              # Enable corepack for yarn
+              corepack enable
+              node --version
+              yarn --version
+        - id: lint_python
+          name: Lint Python with Pre-commit
+          run:
+            shell: bash
+            script: |-
+              export PATH="$HOME/.pyenv/bin:$PATH"
+              eval "$(pyenv init -)"
+              pip install pre-commit
+              pre-commit run --all-files --show-diff-on-failure
+        - id: install_banking_deps
+          name: Install Banking Dependencies
+          run:
+            shell: bash
+            script: |-
+              cd banking
+              yarn install --frozen-lockfile
+        - id: lint_banking
+          name: Lint Banking Frontend
+          run:
+            shell: bash
+            script: |-
+              cd banking
+              yarn lint
+        - id: build_banking
+          name: Build Banking Frontend
+          run:
+            shell: bash
+            script: |-
+              cd banking
+              # Build skipping copy-html-entry as erpnext structure may not exist
+              yarn vite build --base=/assets/erpnext/banking/
+  tags:
+    onboarding: "true"
